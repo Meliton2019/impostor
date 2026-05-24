@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego del Impostor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chat-container { height: 300px; overflow-y: auto; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white font-sans">
+
+    <div class="max-w-md mx-auto p-6">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-red-500 tracking-widest">IMPOSTOR</h1>
+            <p class="text-slate-400">¿Quién está mintiendo?</p>
+        </header>
+
+        <div id="setup-screen" class="bg-slate-800 p-6 rounded-lg shadow-xl">
+            <label class="block mb-2 text-sm">Tu Nombre:</label>
+            <input type="text" id="username" class="w-full p-2 rounded bg-slate-700 border border-slate-600 mb-4 focus:outline-none focus:border-red-500">
+            <button onclick="startGame()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">
+                Unirse a la Partida
+            </button>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <div class="bg-slate-800 p-4 rounded-lg mb-4 border-l-4 border-blue-500">
+                <span class="text-xs uppercase text-slate-400">Tu información secreta:</span>
+                <p id="secret-word" class="text-xl font-mono font-bold text-blue-400">Cargando...</p>
+            </div>
+
+            <div class="bg-slate-800 rounded-lg shadow-xl p-4">
+                <div id="turn-indicator" class="text-sm text-yellow-400 mb-2 animate-pulse">
+                    Esperando turnos...
+                </div>
+                
+                <div id="chat-box" class="chat-container border-b border-slate-700 mb-4 p-2 text-sm space-y-2">
+                    <p class="text-slate-500 italic text-center">La partida ha comenzado</p>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="message-input" placeholder="Escribe tu pista..." class="flex-1 p-2 rounded bg-slate-700 border border-slate-600 focus:outline-none">
+                    <button class="bg-blue-600 px-4 py-2 rounded font-bold">Enviar</button>
+                </div>
+            </div>
+
+            <button id="vote-btn" class="w-full mt-4 bg-orange-600 hover:bg-orange-700 py-3 rounded-lg font-bold hidden">
+                Ir a Votación 🗳️
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Lógica visual básica
+        function startGame() {
+            const name = document.getElementById('username').value;
+            if(!name) return alert("Ponte un nombre");
+
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            // Simulación de rol (esto lo enviaría el servidor en el futuro)
+            const roles = ["Avión", "Avión", "IMPOSTOR", "Avión"];
+            const randomRole = roles[Math.floor(Math.random() * roles.length)];
+            
+            document.getElementById('secret-word').innerText = randomRole;
+            
+            // Simular que en 5 segundos aparece el botón de votar
+            setTimeout(() => {
+                document.getElementById('vote-btn').classList.remove('hidden');
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
