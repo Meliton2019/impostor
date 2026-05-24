@@ -11,13 +11,13 @@
     <div class="w-full max-w-md p-6">
         <header class="text-center mb-8">
             <h1 class="text-5xl font-black text-red-600 tracking-tighter uppercase italic">Impostor</h1>
-            <p id="status-label" class="text-slate-400 text-sm mt-2 font-medium">Cargando conexión...</p>
+            <p id="status-label" class="text-slate-400 text-sm mt-2 font-medium">Conectando...</p>
         </header>
 
         <div id="setup-screen" class="bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
-            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Nombre del Jugador</label>
-            <input type="text" id="username" placeholder="Ej: Lorenzo" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-600 mb-6 outline-none focus:border-red-500 transition-all text-lg">
-            <button id="btn-unirse" class="w-full bg-red-600 hover:bg-red-700 py-4 rounded-xl font-black text-white shadow-lg shadow-red-900/20 transition-all active:scale-95">ENTRAR A LA SALA</button>
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Tu Nombre</label>
+            <input type="text" id="username" placeholder="Ej: Lorenzo" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-600 mb-6 outline-none focus:border-red-500 transition-all text-lg text-white">
+            <button id="btn-unirse" class="w-full bg-red-600 hover:bg-red-700 py-4 rounded-xl font-black text-white shadow-lg transition-all active:scale-95">ENTRAR</button>
         </div>
 
         <div id="game-screen" class="hidden space-y-4">
@@ -27,15 +27,14 @@
             </div>
 
             <div class="bg-slate-800 rounded-2xl p-4 shadow-2xl border border-slate-700">
-                <div id="chat-box" class="h-80 overflow-y-auto mb-4 p-2 text-sm flex flex-col gap-2 scrollbar-hide">
-                    </div>
+                <div id="chat-box" class="h-80 overflow-y-auto mb-4 p-2 text-sm flex flex-col gap-2"></div>
                 <div class="flex gap-2">
-                    <input type="text" id="msg-input" disabled placeholder="No es tu turno" class="flex-1 p-3 rounded-xl bg-slate-900 border border-slate-700 outline-none focus:border-blue-500 transition-all">
-                    <button id="btn-send" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-bold transition-all active:scale-90 shadow-lg shadow-blue-900/20">></button>
+                    <input type="text" id="msg-input" disabled placeholder="No es tu turno" class="flex-1 p-3 rounded-xl bg-slate-900 border border-slate-700 outline-none text-white">
+                    <button id="btn-send" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-bold">></button>
                 </div>
             </div>
             
-            <button id="btn-admin-start" class="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-black hidden shadow-lg shadow-emerald-900/20 transition-all active:scale-95">INICIAR PARTIDA (ADMIN)</button>
+            <button id="btn-admin-start" class="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-black hidden">INICIAR PARTIDA</button>
         </div>
     </div>
 
@@ -43,11 +42,10 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, onChildAdded, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // CONFIGURACIÓN PARA TU NUEVO PROYECTO: impostor-c7956
         const firebaseConfig = {
-            apiKey: "AIzaSyAyqIP1CjmXnYBVXBXseTe-iN_RkwN-ED4", // Usa tu clave real si esta falla
+            databaseURL: "https://impostor-c7956-default-rtdb.asia-southeast1.firebasedatabase.app",
+            apiKey: "AIzaSyAyqIP1CjmXnYBVXBXseTe-iN_RkwN-ED4",
             authDomain: "impostor-c7956.firebaseapp.com",
-            databaseURL: "https://impostor-c7956-default-rtdb.firebaseio.com",
             projectId: "impostor-c7956",
             storageBucket: "impostor-c7956.firebasestorage.app",
             messagingSenderId: "610688449274",
@@ -58,38 +56,37 @@
         const db = getDatabase(app);
         let miNombre = "";
 
-        // Al iniciar, limpiar estados huérfanos
-        onValue(ref(db, 'jugadores'), (s) => {
-            const num = s.exists() ? Object.keys(s.val()).length : 0;
-            if(num === 0) document.getElementById('status-label').innerText = "Sala vacía";
-            else document.getElementById('status-label').innerText = `${num} jugadores en línea`;
+        // Verificar conexión
+        onValue(ref(db, '.info/connected'), (snap) => {
+            document.getElementById('status-label').innerText = snap.val() ? "Conectado" : "Buscando señal...";
         });
 
-        // UNIRSE
         document.getElementById('btn-unirse').onclick = async () => {
             miNombre = document.getElementById('username').value.trim();
             if(!miNombre) return alert("Escribe tu nombre");
 
-            const snap = await get(ref(db, 'jugadores'));
-            // El primero en entrar limpia la mesa y es Admin
-            if (!snap.exists()) {
-                await remove(ref(db, 'partida'));
-                await remove(ref(db, 'chat'));
-                document.getElementById('btn-admin-start').classList.remove('hidden');
-            }
+            try {
+                const snap = await get(ref(db, 'jugadores'));
+                if (!snap.exists()) {
+                    await remove(ref(db, 'partida'));
+                    await remove(ref(db, 'chat'));
+                    document.getElementById('btn-admin-start').classList.remove('hidden');
+                }
 
-            await set(ref(db, 'jugadores/' + miNombre), { n: miNombre });
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
+                await set(ref(db, 'jugadores/' + miNombre), { n: miNombre });
+                document.getElementById('setup-screen').classList.add('hidden');
+                document.getElementById('game-screen').classList.remove('hidden');
+            } catch (e) {
+                alert("Error: Revisa las reglas en Firebase");
+            }
         };
 
-        // INICIAR (Solo Admin)
         document.getElementById('btn-admin-start').onclick = async () => {
             const s = await get(ref(db, 'jugadores'));
             const lista = Object.keys(s.val() || {});
-            if(lista.length < 2) return alert("Se necesitan al menos 2 jugadores");
+            if(lista.length < 2) return alert("Faltan jugadores");
 
-            const palabras = ["PIZZA", "FÚTBOL", "ESPAÑA", "YOUTUBE", "TIKTOK", "MINECRAFT"];
+            const palabras = ["PIZZA", "HAMBURGUESA", "FÚTBOL", "PLAYA", "CINE"];
             const imp = lista[Math.floor(Math.random() * lista.length)];
             const pal = palabras[Math.floor(Math.random() * palabras.length)];
 
@@ -103,71 +100,52 @@
             });
         };
 
-        // ESCUCHAR ESTADO DEL JUEGO
         onValue(ref(db, 'partida'), (s) => {
             const data = s.val();
             if(!data) return;
-
             const input = document.getElementById('msg-input');
             const secret = document.getElementById('secret-word');
-            const card = document.getElementById('role-card');
 
             if(data.estado === 'jugando') {
-                if(miNombre === data.impostor) {
-                    secret.innerText = "¡ERES EL IMPOSTOR!";
-                    card.style.borderColor = "#ef4444";
-                    secret.className = "text-2xl font-bold text-red-500 italic";
-                } else {
-                    secret.innerText = "Palabra: " + data.palabra;
-                    card.style.borderColor = "#3b82f6";
-                    secret.className = "text-2xl font-bold text-blue-400";
-                }
-
-                document.getElementById('status-label').innerText = `TURNO DE: ${data.turnoActual}`;
+                secret.innerText = (miNombre === data.impostor) ? "ERES EL IMPOSTOR" : "Palabra: " + data.palabra;
+                secret.style.color = (miNombre === data.impostor) ? "#ef4444" : "#60a5fa";
+                document.getElementById('status-label').innerText = `Turno de: ${data.turnoActual}`;
                 input.disabled = (miNombre !== data.turnoActual);
-                input.placeholder = (miNombre === data.turnoActual) ? "¡TE TOCA HABLAR!" : `Esperando a ${data.turnoActual}...`;
+                input.placeholder = (miNombre === data.turnoActual) ? "¡Tu turno!" : `Esperando a ${data.turnoActual}...`;
             }
         });
 
-        // ENVIAR MENSAJE
         document.getElementById('btn-send').onclick = async () => {
             const input = document.getElementById('msg-input');
-            const txt = input.value.trim();
-            if(!txt || input.disabled) return;
+            if(!input.value.trim() || input.disabled) return;
 
-            await push(ref(db, 'chat'), { n: miNombre, t: txt });
+            await push(ref(db, 'chat'), { n: miNombre, t: input.value });
             input.value = "";
 
             const sP = await get(ref(db, 'partida'));
             const p = sP.val();
             const sJ = await get(ref(db, 'jugadores'));
             const lista = Object.keys(sJ.val());
-            
             let nextIdx = (lista.indexOf(miNombre) + 1) % lista.length;
             let nRonda = p.ronda;
             if(nextIdx === 0) nRonda++;
 
-            // Pasar turno o ir a votación
             if(nRonda > 2) {
                 set(ref(db, 'partida/estado'), 'votacion');
                 set(ref(db, 'partida/turnoActual'), 'TODOS');
-                alert("¡FIN DE LAS PISTAS! Es hora de discutir.");
             } else {
                 set(ref(db, 'partida/turnoActual'), lista[nextIdx]);
                 set(ref(db, 'partida/ronda'), nRonda);
             }
         };
 
-        // RENDERIZAR MENSAJES
         onChildAdded(ref(db, 'chat'), (s) => {
             const d = s.val();
             const p = document.createElement('div');
-            const esMio = d.n === miNombre;
-            p.className = `max-w-[80%] p-3 rounded-2xl text-sm ${esMio ? 'bg-blue-600 self-end rounded-tr-none' : 'bg-slate-700 self-start rounded-tl-none'}`;
-            p.innerHTML = `<span class="block text-[10px] opacity-50 font-bold mb-1">${d.n}</span>${d.t}`;
-            const box = document.getElementById('chat-box');
-            box.appendChild(p);
-            box.scrollTop = box.scrollHeight;
+            p.className = `p-2 rounded bg-slate-700/50`;
+            p.innerHTML = `<b class="text-blue-400">${d.n}:</b> ${d.t}`;
+            document.getElementById('chat-box').appendChild(p);
+            document.getElementById('chat-box').scrollTop = 9999;
         });
     </script>
 </body>
