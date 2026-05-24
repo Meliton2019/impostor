@@ -3,40 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Impostor Online</title>
+    <title>IMPOSTOR - Juego Online</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        #chat-box p { margin-bottom: 4px; padding: 4px; border-radius: 4px; background: rgba(255,255,255,0.05); }
-    </style>
 </head>
-<body class="bg-slate-900 text-white font-sans">
+<body class="bg-slate-900 text-white font-sans min-h-screen flex items-center justify-center">
 
-    <div class="max-w-md mx-auto p-6">
+    <div class="w-full max-w-md p-6">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-red-500 tracking-widest uppercase">Impostor</h1>
-            <p id="status-label" class="text-slate-400 text-sm mt-2">Introduce tu nombre para entrar</p>
+            <h1 class="text-5xl font-black text-red-600 tracking-tighter uppercase italic">Impostor</h1>
+            <p id="status-label" class="text-slate-400 text-sm mt-2 font-medium">Cargando conexión...</p>
         </header>
 
-        <div id="setup-screen" class="bg-slate-800 p-6 rounded-lg shadow-xl">
-            <input type="text" id="username" placeholder="Tu nombre..." class="w-full p-3 rounded bg-slate-700 border border-slate-600 mb-4 focus:outline-none focus:border-red-500">
-            <button id="btn-unirse" class="w-full bg-red-600 hover:bg-red-700 py-3 rounded font-bold transition">ENTRAR A LA SALA</button>
+        <div id="setup-screen" class="bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
+            <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Nombre del Jugador</label>
+            <input type="text" id="username" placeholder="Ej: Lorenzo" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-600 mb-6 outline-none focus:border-red-500 transition-all text-lg">
+            <button id="btn-unirse" class="w-full bg-red-600 hover:bg-red-700 py-4 rounded-xl font-black text-white shadow-lg shadow-red-900/20 transition-all active:scale-95">ENTRAR A LA SALA</button>
         </div>
 
-        <div id="game-screen" class="hidden">
-            <div id="role-card" class="bg-slate-800 p-4 rounded-lg mb-4 border-l-4 border-blue-500">
-                <span class="text-xs uppercase text-slate-400">Tu información:</span>
-                <p id="secret-word" class="text-xl font-bold text-blue-400 font-mono">Esperando al administrador...</p>
+        <div id="game-screen" class="hidden space-y-4">
+            <div id="role-card" class="bg-slate-800 p-5 rounded-2xl border-l-8 border-blue-500 shadow-xl">
+                <span class="text-[10px] uppercase font-black text-slate-500 tracking-widest">Tu Secreto</span>
+                <p id="secret-word" class="text-2xl font-bold text-blue-400 mt-1">Esperando inicio...</p>
             </div>
 
-            <div class="bg-slate-800 rounded-lg p-4 shadow-xl">
-                <div id="chat-box" class="h-64 overflow-y-auto mb-4 p-2 text-sm border-b border-slate-700"></div>
+            <div class="bg-slate-800 rounded-2xl p-4 shadow-2xl border border-slate-700">
+                <div id="chat-box" class="h-80 overflow-y-auto mb-4 p-2 text-sm flex flex-col gap-2 scrollbar-hide">
+                    </div>
                 <div class="flex gap-2">
-                    <input type="text" id="msg-input" disabled placeholder="Esperando inicio..." class="flex-1 p-2 rounded bg-slate-700 border border-slate-600 outline-none">
-                    <button id="btn-send" class="bg-blue-600 px-4 py-2 rounded font-bold disabled:opacity-50">></button>
+                    <input type="text" id="msg-input" disabled placeholder="No es tu turno" class="flex-1 p-3 rounded-xl bg-slate-900 border border-slate-700 outline-none focus:border-blue-500 transition-all">
+                    <button id="btn-send" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-bold transition-all active:scale-90 shadow-lg shadow-blue-900/20">></button>
                 </div>
             </div>
             
-            <button id="btn-admin-start" class="w-full mt-4 bg-green-600 hover:bg-green-700 py-3 rounded font-bold hidden shadow-lg">INICIAR PARTIDA</button>
+            <button id="btn-admin-start" class="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-black hidden shadow-lg shadow-emerald-900/20 transition-all active:scale-95">INICIAR PARTIDA (ADMIN)</button>
         </div>
     </div>
 
@@ -44,12 +43,13 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, onChildAdded, remove, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+        // CONFIGURACIÓN PARA TU NUEVO PROYECTO: impostor-c7956
         const firebaseConfig = {
-            apiKey: "AIzaSyAyqIP1CjmXnYBVXBXseTe-iN_RkwN-ED4",
-            authDomain: "impostor-52364.firebaseapp.com",
-            databaseURL: "https://impostor-52364-default-rtdb.firebaseio.com",
-            projectId: "impostor-52364",
-            storageBucket: "impostor-52364.firebasestorage.app",
+            apiKey: "AIzaSyAyqIP1CjmXnYBVXBXseTe-iN_RkwN-ED4", // Usa tu clave real si esta falla
+            authDomain: "impostor-c7956.firebaseapp.com",
+            databaseURL: "https://impostor-c7956-default-rtdb.firebaseio.com",
+            projectId: "impostor-c7956",
+            storageBucket: "impostor-c7956.firebasestorage.app",
             messagingSenderId: "610688449274",
             appId: "1:610688449274:web:909e18e92ed45d61e4a743"
         };
@@ -58,117 +58,113 @@
         const db = getDatabase(app);
         let miNombre = "";
 
-        // --- UNIRSE ---
-        document.getElementById('btn-unirse').onclick = async () => {
-            const input = document.getElementById('username');
-            miNombre = input.value.trim();
-            if(!miNombre) return alert("Escribe un nombre");
+        // Al iniciar, limpiar estados huérfanos
+        onValue(ref(db, 'jugadores'), (s) => {
+            const num = s.exists() ? Object.keys(s.val()).length : 0;
+            if(num === 0) document.getElementById('status-label').innerText = "Sala vacía";
+            else document.getElementById('status-label').innerText = `${num} jugadores en línea`;
+        });
 
-            // Comprobar si somos el primero
-            const snapshot = await get(ref(db, 'jugadores'));
-            if (!snapshot.exists()) {
+        // UNIRSE
+        document.getElementById('btn-unirse').onclick = async () => {
+            miNombre = document.getElementById('username').value.trim();
+            if(!miNombre) return alert("Escribe tu nombre");
+
+            const snap = await get(ref(db, 'jugadores'));
+            // El primero en entrar limpia la mesa y es Admin
+            if (!snap.exists()) {
+                await remove(ref(db, 'partida'));
+                await remove(ref(db, 'chat'));
                 document.getElementById('btn-admin-start').classList.remove('hidden');
-                document.getElementById('status-label').innerText = "Eres el administrador";
-            } else {
-                document.getElementById('status-label').innerText = "Conectado como: " + miNombre;
             }
 
-            await set(ref(db, 'jugadores/' + miNombre), { nombre: miNombre });
-            
+            await set(ref(db, 'jugadores/' + miNombre), { n: miNombre });
             document.getElementById('setup-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
         };
 
-        // --- INICIAR (Solo Admin) ---
+        // INICIAR (Solo Admin)
         document.getElementById('btn-admin-start').onclick = async () => {
-            const snap = await get(ref(db, 'jugadores'));
-            const jugadores = Object.keys(snap.val() || {});
-            
-            if (jugadores.length < 2) return alert("Se necesitan al menos 2 personas (aunque mejor 3)");
+            const s = await get(ref(db, 'jugadores'));
+            const lista = Object.keys(s.val() || {});
+            if(lista.length < 2) return alert("Se necesitan al menos 2 jugadores");
 
-            const palabras = ["CINE", "PLAYA", "HOSPITAL", "ZOO", "BOSQUE", "COLEGIO"];
-            const impostor = jugadores[Math.floor(Math.random() * jugadores.length)];
-            const palabra = palabras[Math.floor(Math.random() * palabras.length)];
+            const palabras = ["PIZZA", "FÚTBOL", "ESPAÑA", "YOUTUBE", "TIKTOK", "MINECRAFT"];
+            const imp = lista[Math.floor(Math.random() * lista.length)];
+            const pal = palabras[Math.floor(Math.random() * palabras.length)];
 
             await remove(ref(db, 'chat'));
             await set(ref(db, 'partida'), {
-                impostor: impostor,
-                palabra: palabra,
+                impostor: imp,
+                palabra: pal,
                 estado: 'jugando',
-                turnoActual: jugadores[0],
+                turnoActual: lista[0],
                 ronda: 1
             });
         };
 
-        // --- LÓGICA DE TURNOS Y ESTADO ---
-        onValue(ref(db, 'partida'), (snapshot) => {
-            const data = snapshot.val();
+        // ESCUCHAR ESTADO DEL JUEGO
+        onValue(ref(db, 'partida'), (s) => {
+            const data = s.val();
             if(!data) return;
 
-            const label = document.getElementById('status-label');
             const input = document.getElementById('msg-input');
             const secret = document.getElementById('secret-word');
+            const card = document.getElementById('role-card');
 
             if(data.estado === 'jugando') {
-                // Rol
                 if(miNombre === data.impostor) {
-                    secret.innerText = "Eres el IMPOSTOR";
-                    secret.className = "text-xl font-bold text-red-500 font-mono";
+                    secret.innerText = "¡ERES EL IMPOSTOR!";
+                    card.style.borderColor = "#ef4444";
+                    secret.className = "text-2xl font-bold text-red-500 italic";
                 } else {
                     secret.innerText = "Palabra: " + data.palabra;
-                    secret.className = "text-xl font-bold text-blue-400 font-mono";
+                    card.style.borderColor = "#3b82f6";
+                    secret.className = "text-2xl font-bold text-blue-400";
                 }
 
-                // Turnos
-                label.innerText = `Ronda ${data.ronda} - Turno de: ${data.turnoActual}`;
+                document.getElementById('status-label').innerText = `TURNO DE: ${data.turnoActual}`;
                 input.disabled = (miNombre !== data.turnoActual);
-                input.placeholder = (miNombre === data.turnoActual) ? "¡Tu turno! Escribe tu pista..." : `Esperando a ${data.turnoActual}...`;
-            }
-
-            if(data.estado === 'votacion') {
-                label.innerText = "¡TIEMPO DE VOTAR!";
-                input.disabled = false;
-                input.placeholder = "Discutid y votad...";
+                input.placeholder = (miNombre === data.turnoActual) ? "¡TE TOCA HABLAR!" : `Esperando a ${data.turnoActual}...`;
             }
         });
 
-        // --- CHAT ---
+        // ENVIAR MENSAJE
         document.getElementById('btn-send').onclick = async () => {
             const input = document.getElementById('msg-input');
-            const texto = input.value.trim();
-            if(!texto) return;
+            const txt = input.value.trim();
+            if(!txt || input.disabled) return;
 
-            const snapPartida = await get(ref(db, 'partida'));
-            const partida = snapPartida.val();
-
-            // Solo permitir si es tu turno
-            if(partida.estado === 'jugando' && partida.turnoActual !== miNombre) return;
-
-            await push(ref(db, 'chat'), { nombre: miNombre, texto: texto });
+            await push(ref(db, 'chat'), { n: miNombre, t: txt });
             input.value = "";
 
-            if(partida.estado === 'jugando') {
-                const snapJugadores = await get(ref(db, 'jugadores'));
-                const lista = Object.keys(snapJugadores.val());
-                let idx = lista.indexOf(miNombre);
-                let proximoIdx = (idx + 1) % lista.length;
-                let nuevaRonda = partida.ronda;
+            const sP = await get(ref(db, 'partida'));
+            const p = sP.val();
+            const sJ = await get(ref(db, 'jugadores'));
+            const lista = Object.keys(sJ.val());
+            
+            let nextIdx = (lista.indexOf(miNombre) + 1) % lista.length;
+            let nRonda = p.ronda;
+            if(nextIdx === 0) nRonda++;
 
-                if(proximoIdx === 0) nuevaRonda++;
-
-                if(nuevaRonda > 2) {
-                    set(ref(db, 'partida/estado'), 'votacion');
-                } else {
-                    set(ref(db, 'partida/turnoActual'), lista[proximoIdx]);
-                    set(ref(db, 'partida/ronda'), nuevaRonda);
-                }
+            // Pasar turno o ir a votación
+            if(nRonda > 2) {
+                set(ref(db, 'partida/estado'), 'votacion');
+                set(ref(db, 'partida/turnoActual'), 'TODOS');
+                alert("¡FIN DE LAS PISTAS! Es hora de discutir.");
+            } else {
+                set(ref(db, 'partida/turnoActual'), lista[nextIdx]);
+                set(ref(db, 'partida/ronda'), nRonda);
             }
         };
 
-        onChildAdded(ref(db, 'chat'), (snapshot) => {
-            const data = snapshot.val();
-            const p = document.createElement('p');
-            p.innerHTML = `<b class="text-blue-300">${data.nombre}:</b> ${data.texto}`;
+        // RENDERIZAR MENSAJES
+        onChildAdded(ref(db, 'chat'), (s) => {
+            const d = s.val();
+            const p = document.createElement('div');
+            const esMio = d.n === miNombre;
+            p.className = `max-w-[80%] p-3 rounded-2xl text-sm ${esMio ? 'bg-blue-600 self-end rounded-tr-none' : 'bg-slate-700 self-start rounded-tl-none'}`;
+            p.innerHTML = `<span class="block text-[10px] opacity-50 font-bold mb-1">${d.n}</span>${d.t}`;
             const box = document.getElementById('chat-box');
             box.appendChild(p);
             box.scrollTop = box.scrollHeight;
