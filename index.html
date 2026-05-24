@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMPOSTOR - Juego Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white font-sans min-h-screen flex items-center justify-center">
+
+    <div class="w-full max-w-md p-6">
+        <header class="text-center mb-8">
+            <h1 class="text-5xl font-black text-red-600 tracking-tighter uppercase italic">Impostor</h1>
+            <p id="status-label" class="text-slate-400 text-sm mt-2 font-medium font-mono text-blue-400">CONECTANDO...</p>
+        </header>
+
+        <div id="setup-screen" class="bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
+            <input type="text" id="username" placeholder="Tu Nombre" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-600 mb-6 outline-none focus:border-red-500 text-white text-lg">
+            <button id="btn-unirse" class="w-full bg-red-600 hover:bg-red-700 py-4 rounded-xl font-black shadow-lg active:scale-95 transition-all uppercase">Entrar a la Sala</button>
+        </div>
+
+        <div id="game-screen" class="hidden space-y-4">
+            <div id="role-card" class="bg-slate-800 p-5 rounded-2xl border-l-8 border-blue-500 shadow-xl">
+                <span class="text-[10px] uppercase font-black text-slate-500 tracking-widest">Información Secreta</span>
+                <p id="secret-word" class="text-2xl font-bold text-blue-400 mt-1 italic">Esperando inicio...</p>
+            </div>
+            <div class="bg-slate-800 rounded-2xl p-4 shadow-2xl border border-slate-700">
+                <div id="chat-box" class="h-64 overflow-y-auto mb-4 p-2 text-sm flex flex-col gap-2"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="msg-input" disabled placeholder="No es tu turno" class="flex-1 p-3 rounded-xl bg-slate-900 border border-slate-700 outline-none text-white">
+                    <button id="btn-send" class="bg-blue-600 px-6 py-3 rounded-xl font-bold">></button>
+                </div>
+            </div>
+            <button id="btn-admin-start" class="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-black hidden shadow-lg uppercase">Iniciar Partida</button>
+        </div>
+
+        <div id="vote-screen" class="hidden bg-slate-800 p-6 rounded-2xl shadow-2xl border-2 border-orange-500 text-center">
+            <h2 class="text-2xl font-black mb-4 text-orange-500 uppercase tracking-tighter">¿Quién es el Impostor?</h2>
+            <div id="vote-list" class="grid grid-cols-1 gap-3"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, onChildAdded, remove, get, update, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            databaseURL: "https://impostor-c7956-default-rtdb.asia-southeast1.firebasedatabase.app",
+            apiKey: "AIzaSyAyqIP1CjmXnYBVXBXseTe-iN_RkwN-ED4",
+            authDomain: "impostor-c7956.firebaseapp.com",
+            projectId: "impostor-c7956",
+            storageBucket: "impostor-c7956.firebasestorage.app",
+            messagingSenderId: "610688449274",
+            appId: "1:610688449274:web:909e18e92ed45d61e4a743"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        let miNombre = "";
+        let yaHeVotado = false;
+
+        // Comprobar conexión
+        onValue(ref(db, '.info/connected'), s => { 
+            document.getElementById('status-label').innerText = s.val() ? "SALA ACTIVA" : "SIN CONEXIÓN"; 
+        });
+
+        // UNIRSE
+        document.getElementById('btn-unirse').onclick = async () => {
+            miNombre = document.getElementById('username').value.trim();
+            if(!miNombre) return;
+            const snap = await get(ref(db, 'jugadores'));
+            if (!snap.exists()) {
+                await set(ref(db, '/'), { jugadores: {}, partida: null, chat: null, votos: null });
+                document.getElementById('btn-admin-start').classList.remove('hidden');
+            }
+            await set(ref(db, 'jugadores/' + miNombre), { n: miNombre });
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+        };
+
+        // INICIAR (ADMIN)
+        document.getElementById('btn-admin-start').onclick = async () => {
+            const s = await get(ref(db, 'jugadores'));
+            const lista = Object.keys(s.val() || {});
+            if(lista.length < 2) return alert("Faltan jugadores en la sala");
+            
+            const palabras = ["PIZZA", "HAMBURGUESA", "FÚTBOL", "PLAYA", "CINE", "TREN", "AVIÓN"];
+            
+            await remove(ref(db, 'chat'));
+            await remove(ref(db, 'votos'));
+            
+            await set(ref(db, 'partida'), {
+                impostor: lista[Math.floor(Math.random() * lista.length)],
+                palabra: palabras[Math.floor(Math.random() * palabras.length)],
+                estado: 'jugando',
+                turnoActual: lista[0],
+                ronda: 1
+            });
+        };
+
+        // ESCUCHAR ESTADO
+        onValue(ref(db, 'partida'), (s) => {
+            const data = s.val();
+            if(!data) return;
+
+            if(data.estado === 'jugando') {
+                document.getElementById('game-screen').classList.remove('hidden');
+                document.getElementById('vote-screen').classList.add('hidden');
+                const secret = document.getElementById('secret-word');
+                secret.innerText = (miNombre === data.impostor) ? "¡ERES EL IMPOSTOR!" : "Palabra: " + data.palabra;
+                secret.style.color = (miNombre === data.impostor) ? "#ef4444" : "#60a5fa";
+                document.getElementById('status-label').innerText = `RONDA ${data.ronda} - TURNO: ${data.turnoActual}`;
+                document.getElementById('msg-input').disabled = (miNombre !== data.turnoActual);
+            } 
+            
+            if(data.estado === 'votacion') {
+                document.getElementById('game-screen').classList.add('hidden');
+                document.getElementById('vote-screen').classList.remove('hidden');
+                generarListaVotos();
+            }
+        });
+
+        // GENERAR BOTONES DE VOTO
+        async function generarListaVotos() {
+            const container = document.getElementById('vote-list');
+            container.innerHTML = "";
+            const s = await get(ref(db, 'jugadores'));
+            Object.keys(s.val() || {}).forEach(nombre => {
+                const btn = document.createElement('button');
+                btn.className = "w-full bg-slate-700 p-4 rounded-xl font-black hover:bg-orange-600 transition-all uppercase";
+                btn.innerText = nombre;
+                btn.onclick = () => votarA(nombre);
+                container.appendChild(btn);
+            });
+        }
+
+        // VOTAR
+        async function votarA(alguien) {
+            if(yaHeVotado) return;
+            yaHeVotado = true;
+            await update(ref(db, 'votos'), { [alguien]: increment(1) });
+            
+            const sV = await get(ref(db, 'votos'));
+            const sJ = await get(ref(db, 'jugadores'));
+            const totalVotos = Object.values(sV.val() || {}).reduce((a,b) => a+b, 0);
+            if(totalVotos >= Object.keys(sJ.val()).length) procesarResultado(sV.val());
+        }
+
+        // RESULTADO Y LIMPIEZA
+        async function procesarResultado(votos) {
+            const expulsado = Object.keys(votos).reduce((a, b) => votos[a] > votos[b] ? a : b);
+            const sP = await get(ref(db, 'partida'));
+            const impostorReal = sP.val().impostor;
+
+            // Borrar chat para la siguiente ronda/partida
+            await remove(ref(db, 'chat'));
+            document.getElementById('chat-box').innerHTML = "";
+
+            if(expulsado === impostorReal) {
+                alert(`¡VICTORIA! ${expulsado} era el Impostor. Sala limpiada.`);
+                await remove(ref(db, 'partida'));
+                await remove(ref(db, 'votos'));
+                location.reload(); 
+            } else {
+                alert(`¡ERROR! ${expulsado} era inocente. El chat se limpia y el juego sigue.`);
+                await remove(ref(db, 'votos'));
+                yaHeVotado = false;
+                const sJ = await get(ref(db, 'jugadores'));
+                await update(ref(db, 'partida'), { estado: 'jugando', ronda: 1, turnoActual: Object.keys(sJ.val())[0] });
+            }
+        }
+
+        // ENVIAR PISTA
+        document.getElementById('btn-send').onclick = async () => {
+            const input = document.getElementById('msg-input');
+            if(!input.value.trim() || input.disabled) return;
+            await push(ref(db, 'chat'), { n: miNombre, t: input.value });
+            input.value = "";
+            
+            const sP = await get(ref(db, 'partida'));
+            const p = sP.val();
+            const sJ = await get(ref(db, 'jugadores'));
+            const lista = Object.keys(sJ.val());
+            let nextIdx = (lista.indexOf(miNombre) + 1) % lista.length;
+            let nRonda = (nextIdx === 0) ? p.ronda + 1 : p.ronda;
+
+            if(nRonda > 2) {
+                await update(ref(db, 'partida'), { estado: 'votacion' });
+            } else {
+                await update(ref(db, 'partida'), { turnoActual: lista[nextIdx], ronda: nRonda });
+            }
+        };
+
+        // RECIBIR CHAT
+        onChildAdded(ref(db, 'chat'), s => {
+            const d = s.val();
+            const div = document.createElement('div');
+            div.className = `p-3 rounded-2xl text-sm ${d.n === miNombre ? 'bg-blue-600 self-end text-right' : 'bg-slate-700 self-start text-left'}`;
+            div.innerHTML = `<b class="block text-[10px] opacity-50">${d.n}</b>${d.t}`;
+            const box = document.getElementById('chat-box');
+            box.appendChild(div);
+            box.scrollTop = 9999;
+        });
+    </script>
+</body>
+</html>
