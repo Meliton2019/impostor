@@ -38,79 +38,150 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue, onChildAdded } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, push, onValue, onChildAdded, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAyqIP1CjmXnYBVXBXseTe-iN_RkwN-ED4",
-            authDomain: "impostor-52364.firebaseapp.com",
-            projectId: "impostor-52364",
-            storageBucket: "impostor-52364.firebasestorage.app",
-            messagingSenderId: "610688449274",
-            appId: "1:610688449274:web:909e18e92ed45d61e4a743"
-        };
+    const firebaseConfig = {
+        apiKey: "AIzaSyAyqIP1CjmXnYBVXBXseTe-iN_RkwN-ED4",
+        authDomain: "impostor-52364.firebaseapp.com",
+        databaseURL: "https://impostor-52364-default-rtdb.firebaseio.com", // Asegúrate de que sea tu URL de Realtime Database
+        projectId: "impostor-52364",
+        storageBucket: "impostor-52364.firebasestorage.app",
+        messagingSenderId: "610688449274",
+        appId: "1:610688449274:web:909e18e92ed45d61e4a743"
+    };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        let miNombre = "";
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    let miNombre = "";
+    let esAdmin = false;
 
-        // --- UNIRSE A LA PARTIDA ---
-        document.getElementById('btn-unirse').onclick = () => {
-            miNombre = document.getElementById('username').value;
-            if(!miNombre) return alert("Escribe tu nombre");
+    // --- UNIRSE A LA PARTIDA ---
+    document.getElementById('btn-unirse').onclick = () => {
+        miNombre = document.getElementById('username').value.trim();
+        if(!miNombre) return alert("Escribe tu nombre");
 
-            // Guardar jugador en la base de datos
-            set(ref(db, 'jugadores/' + miNombre), { nombre: miNombre });
-            
-            document.getElementById('setup-screen').classList.add('hidden');
-            document.getElementById('game-screen').classList.remove('hidden');
-            document.getElementById('btn-admin-start').classList.remove('hidden'); // Para pruebas, todos pueden iniciar
-        };
+        // Verificamos si somos el primer jugador para ser Admin
+        onValue(ref(db, 'jugadores'), (snapshot) => {
+            if (!snapshot.exists()) {
+                esAdmin = true;
+                document.getElementById('btn-admin-start').classList.remove('hidden');
+                document.getElementById('status-label').innerText = "Eres el ADMIN (Jefe de sala)";
+            }
+        }, { onlyOnce: true });
 
-        // --- LÓGICA DE INICIO (Elegir Impostor) ---
-        document.getElementById('btn-admin-start').onclick = () => {
-            onValue(ref(db, 'jugadores'), (snapshot) => {
-                const lista = Object.keys(snapshot.val());
-                const impostor = lista[Math.floor(Math.random() * lista.length)];
-                const palabra = "PIZZA"; // Aquí podrías poner una lista aleatoria
+        set(ref(db, 'jugadores/' + miNombre), { nombre: miNombre });
+        
+        document.getElementById('setup-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+    };
 
-                set(ref(db, 'partida'), {
-                    impostor: impostor,
-                    palabra: palabra,
-                    estado: 'jugando'
-                });
-            }, { onlyOnce: true });
-        };
+    // --- INICIAR PARTIDA (Solo Admin) ---
+    document.getElementById('btn-admin-start').onclick = () => {
+        const palabras = ["CINE", "PLAYA", "HOSPITAL", "AVION", "SUPERMERCADO", "GIMNASIO"];
+        
+        onValue(ref(db, 'jugadores'), (snapshot) => {
+            const jugadores = Object.keys(snapshot.val());
+            if (jugadores.length < 3) return alert("Necesitas al menos 3 jugadores");
 
-        // --- ESCUCHAR ESTADO DEL JUEGO ---
+            const impostor = jugadores[Math.floor(Math.random() * jugadores.length)];
+            const palabra = palabras[Math.floor(Math.random() * palabras.length)];
+
+            // Resetear chat y empezar
+            remove(ref(db, 'chat'));
+            set(ref(db, 'partida'), {
+                impostor: impostor,
+                palabra: palabra,
+                estado: 'jugando',
+                turnoActual: jugadores[0],
+                ronda: 1,
+                contadorTurnos: 0
+            });
+        }, { onlyOnce: true });
+    };
+
+    // --- ESCUCHAR ESTADO, TURNOS Y RONDAS ---
+    onValue(ref(db, 'partida'), (snapshot) => {
+        const data = snapshot.val();
+        if(!data) return;
+
+        const label = document.getElementById('status-label');
+        const input = document.getElementById('msg-input');
+
+        if(data.estado === 'jugando') {
+            // Mostrar secreto
+            if(miNombre === data.impostor) {
+                document.getElementById('secret-word').innerText = "ERES EL IMPOSTOR (Adivina la palabra)";
+                document.getElementById('secret-word').style.color = "#ef4444";
+            } else {
+                document.getElementById('secret-word').innerText = "Palabra: " + data.palabra;
+                document.getElementById('secret-word').style.color = "#60a5fa";
+            }
+
+            // Control de turnos
+            label.innerText = `Ronda ${data.ronda} - Turno de: ${data.turnoActual}`;
+            input.disabled = (miNombre !== data.turnoActual);
+            input.placeholder = (miNombre === data.turnoActual) ? "¡Te toca hablar!" : `Esperando a ${data.turnoActual}...`;
+        } 
+        
+        if (data.estado === 'votacion') {
+            label.innerText = "¡TIEMPO DE VOTACIÓN! Hablad en el chat y decidid.";
+            input.disabled = false;
+            input.placeholder = "Discutid quién es el impostor...";
+        }
+    });
+
+    // --- ENVIAR MENSAJE Y PASAR TURNO ---
+    document.getElementById('btn-send').onclick = () => {
+        const msgInput = document.getElementById('msg-input');
+        const msg = msgInput.value;
+        if(!msg) return;
+
         onValue(ref(db, 'partida'), (snapshot) => {
             const data = snapshot.val();
-            if(!data) return;
+            
+            // Solo dejar enviar si es su turno o están en votación
+            if (data.estado === 'jugando' && data.turnoActual !== miNombre) return;
 
-            if(data.estado === 'jugando') {
-                if(miNombre === data.impostor) {
-                    document.getElementById('secret-word').innerText = "ERES EL IMPOSTOR";
-                    document.getElementById('secret-word').classList.replace('text-blue-400', 'text-red-500');
-                } else {
-                    document.getElementById('secret-word').innerText = "Palabra: " + data.palabra;
-                }
-            }
-        });
-
-        // --- CHAT ---
-        document.getElementById('btn-send').onclick = () => {
-            const msg = document.getElementById('msg-input').value;
-            if(!msg) return;
             push(ref(db, 'chat'), { nombre: miNombre, texto: msg });
-            document.getElementById('msg-input').value = "";
-        };
+            msgInput.value = "";
 
-        onChildAdded(ref(db, 'chat'), (snapshot) => {
-            const data = snapshot.val();
-            const div = document.createElement('p');
-            div.innerHTML = `<strong>${data.nombre}:</strong> ${data.texto}`;
-            document.getElementById('chat-box').appendChild(div);
-        });
-    </script>
+            if (data.estado === 'jugando') {
+                pasarTurno(data);
+            }
+        }, { onlyOnce: true });
+    };
+
+    function pasarTurno(data) {
+        onValue(ref(db, 'jugadores'), (snapshot) => {
+            const lista = Object.keys(snapshot.val());
+            let indexActual = lista.indexOf(miNombre);
+            let siguienteIndex = (indexActual + 1) % lista.length;
+            let nuevaRonda = data.ronda;
+            let nuevoContador = data.contadorTurnos + 1;
+
+            // Si todos hablaron, sube la ronda
+            if (siguienteIndex === 0) nuevaRonda++;
+
+            // Si llegamos a la ronda 3 (después de 2 rondas), activar votación
+            if (nuevaRonda > 2) {
+                set(ref(db, 'partida/estado'), 'votacion');
+            } else {
+                set(ref(db, 'partida/turnoActual'), lista[siguienteIndex]);
+                set(ref(db, 'partida/ronda'), nuevaRonda);
+                set(ref(db, 'partida/contadorTurnos'), nuevoContador);
+            }
+        }, { onlyOnce: true });
+    }
+
+    onChildAdded(ref(db, 'chat'), (snapshot) => {
+        const data = snapshot.val();
+        const div = document.createElement('p');
+        div.innerHTML = `<span class="text-blue-400 font-bold">${data.nombre}:</span> ${data.texto}`;
+        const box = document.getElementById('chat-box');
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    });
+</script>
 </body>
 </html>
