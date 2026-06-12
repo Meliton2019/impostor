@@ -127,7 +127,7 @@
     font-size:30px; margin:14px 0;
   }
   .result-role.impostor{ color:var(--danger); }
-  .result-role.crew{ color:var(--acid); }
+  .result-role.acid{ color:var(--acid); } /* Corregido: .crew no existía en el CSS, ahora es .acid */
 
   .footer-note{ text-align:center; color:var(--muted); font-size:11px; margin-top:16px; }
   .small{ font-size:11px; color:var(--muted); text-align:center; margin-top:10px; }
@@ -208,7 +208,7 @@
     <div class="value" id="result-word">-</div>
   </div>
   
-  <div id="reveal-true-impostor" class="small" style="margin-bottom:15px; font-size:14px; color:var(--danger);"></div>
+  <div id="reveal-true-impostor" class="small" style="margin-bottom:15px; font-size:14px; color:var(--danger); font-weight:bold;"></div>
 
   <div id="result-host-controls" class="hidden">
     <button id="btn-restart">Nueva partida</button>
@@ -258,7 +258,7 @@ let myName = "";
 let roomCode = null;
 let isHost = false;
 let roomRef = null;
-let lastMsgCount = -1; // Cambiado a -1 para forzar la primera carga siempre
+let lastMsgCount = -1; 
 let myVote = null;
 
 const screens = {
@@ -270,7 +270,9 @@ const screens = {
 };
 function show(name){
   Object.values(screens).forEach(s=>s.classList.add('hidden'));
-  screens[name].classList.remove('hidden');
+  if(screens[name]) {
+    screens[name].classList.remove('hidden');
+  }
 }
 
 function genCode(){
@@ -431,7 +433,6 @@ document.getElementById('btn-start').onclick = async () => {
   const impostorId = ids[Math.floor(Math.random()*ids.length)];
   const turnOrder = shuffle([...ids]);
 
-  // Asegurar limpieza absoluta de mensajes viejos al arrancar
   await roomRef.child('messages').remove();
 
   await roomRef.update({
@@ -475,7 +476,6 @@ function renderGame(room){
     wordValue.textContent = room.word;
   }
 
-  // SOLUCIÓN CHAT: Control riguroso del estado vacío vs mensajes existentes
   const chatLog = document.getElementById('chat-log');
   const messages = room.messages ? Object.values(room.messages) : [];
 
@@ -499,7 +499,6 @@ function renderGame(room){
     chatLog.scrollTop = chatLog.scrollHeight;
   }
 
-  // turno
   const turnOrder = room.turnOrder || [];
   const currentTurn = room.currentTurn || 0;
   const currentPlayerId = turnOrder[currentTurn];
@@ -534,7 +533,6 @@ function renderGame(room){
     let fround = freshRoom.currentRound;
     if(fto[fturn] !== myId) return;
 
-    // Guardar los mensajes en una lista limpia
     const currentMessages = freshRoom.messages ? Object.values(freshRoom.messages) : [];
     const newMessages = currentMessages.concat([{
       playerId: myId, name: myName, text: text, round: fround
@@ -635,7 +633,7 @@ async function resolveVoting(room){
    RESULTADOS
    ========================================================= */
 function renderResult(room){
-  show('results'); // Asegurar cambio de pantalla limpio
+  show('result'); 
   const players = room.players || {};
   const eliminated = room.eliminatedId;
   const elimName = players[eliminated] ? players[eliminated].name : '?';
@@ -650,12 +648,11 @@ function renderResult(room){
   if(wasImpostor){
     roleEl.textContent = "¡ERA EL IMPOSTOR!";
     roleEl.className = "result-role impostor";
-    trueImpostorEl.textContent = ""; // No hace falta revelar nada porque acertaron
+    trueImpostorEl.textContent = ""; 
   } else {
     roleEl.textContent = "NO era el impostor";
-    roleEl.className = "result-role crew";
+    roleEl.className = "result-role acid"; // Corregido: Aplicamos la clase .acid que sí existe en CSS
     
-    // SOLUCIÓN EXPLICACIÓN IMPOSTOR: Buscamos el nombre del impostor real y lo revelamos
     const trueImpostorName = players[room.impostorId] ? players[room.impostorId].name : '?';
     trueImpostorEl.textContent = `El verdadero impostor era: ${trueImpostorName} 🥷`;
   }
@@ -683,10 +680,8 @@ document.getElementById('btn-restart').onclick = async () => {
   const impostorId = ids[Math.floor(Math.random()*ids.length)];
   const turnOrder = shuffle([...ids]);
 
-  // SOLUCIÓN CHAT: Forzamos el reinicio del contador local antes de vaciar la DB
   lastMsgCount = -1;
 
-  // Eliminamos el nodo entero en la base de datos
   await roomRef.child('messages').remove();
 
   await roomRef.update({
