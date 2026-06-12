@@ -202,10 +202,14 @@
   <h1>RESULTADO</h1>
   <div class="sub" id="result-eliminated"></div>
   <div class="result-role" id="result-role"></div>
+  
   <div class="word-box" style="margin-top:0;">
     <div class="label">La palabra era</div>
     <div class="value" id="result-word">-</div>
   </div>
+  
+  <div id="reveal-true-impostor" class="small" style="margin-bottom:15px; font-size:14px; color:var(--danger);"></div>
+
   <div id="result-host-controls" class="hidden">
     <button id="btn-restart">Nueva partida</button>
   </div>
@@ -254,7 +258,7 @@ let myName = "";
 let roomCode = null;
 let isHost = false;
 let roomRef = null;
-let lastMsgCount = 0;
+let lastMsgCount = -1; // Cambiado a -1 para forzar la primera carga siempre
 let myVote = null;
 
 const screens = {
@@ -427,6 +431,9 @@ document.getElementById('btn-start').onclick = async () => {
   const impostorId = ids[Math.floor(Math.random()*ids.length)];
   const turnOrder = shuffle([...ids]);
 
+  // Asegurar limpieza absoluta de mensajes viejos al arrancar
+  await roomRef.child('messages').remove();
+
   await roomRef.update({
     status: 'playing',
     word: word,
@@ -435,7 +442,6 @@ document.getElementById('btn-start').onclick = async () => {
     turnOrder: turnOrder,
     currentTurn: 0,
     currentRound: 1,
-    messages: [],
     votes: null
   });
 };
@@ -469,18 +475,18 @@ function renderGame(room){
     wordValue.textContent = room.word;
   }
 
-  // chat log
+  // SOLUCIÓN CHAT: Control riguroso del estado vacío vs mensajes existentes
   const chatLog = document.getElementById('chat-log');
-  const messages = room.messages || [];
-  if(messages.length !== lastMsgCount || chatLog.childElementCount === 0){
+  const messages = room.messages ? Object.values(room.messages) : [];
+
+  if (messages.length !== lastMsgCount || messages.length === 0) {
     chatLog.innerHTML = '';
     
-    if(messages.length === 0 || !room.messages){
+    if (messages.length === 0) {
       const sys = document.createElement('div');
       sys.className = 'msg system';
       sys.textContent = `Ronda 1 — turnos por orden. ¡Da pistas sobre tu palabra sin decirla!`;
       chatLog.appendChild(sys);
-      lastMsgCount = 0;
     } else {
       messages.forEach(m => {
         const div = document.createElement('div');
@@ -488,8 +494,8 @@ function renderGame(room){
         div.innerHTML = `<span class="who">${escapeHtml(m.name)}:</span>${escapeHtml(m.text)}`;
         chatLog.appendChild(div);
       });
-      lastMsgCount = messages.length;
     }
+    lastMsgCount = messages.length;
     chatLog.scrollTop = chatLog.scrollHeight;
   }
 
@@ -528,7 +534,9 @@ function renderGame(room){
     let fround = freshRoom.currentRound;
     if(fto[fturn] !== myId) return;
 
-    const newMessages = (freshRoom.messages || []).concat([{
+    // Guardar los mensajes en una lista limpia
+    const currentMessages = freshRoom.messages ? Object.values(freshRoom.messages) : [];
+    const newMessages = currentMessages.concat([{
       playerId: myId, name: myName, text: text, round: fround
     }]);
 
@@ -627,7 +635,7 @@ async function resolveVoting(room){
    RESULTADOS
    ========================================================= */
 function renderResult(room){
-  show('result');
+  show('results'); // Asegurar cambio de pantalla limpio
   const players = room.players || {};
   const eliminated = room.eliminatedId;
   const elimName = players[eliminated] ? players[eliminated].name : '?';
@@ -637,12 +645,19 @@ function renderResult(room){
     `${elimName} ha sido expulsado/a`;
 
   const roleEl = document.getElementById('result-role');
+  const trueImpostorEl = document.getElementById('reveal-true-impostor');
+  
   if(wasImpostor){
     roleEl.textContent = "¡ERA EL IMPOSTOR!";
     roleEl.className = "result-role impostor";
+    trueImpostorEl.textContent = ""; // No hace falta revelar nada porque acertaron
   } else {
     roleEl.textContent = "NO era el impostor";
     roleEl.className = "result-role crew";
+    
+    // SOLUCIÓN EXPLICACIÓN IMPOSTOR: Buscamos el nombre del impostor real y lo revelamos
+    const trueImpostorName = players[room.impostorId] ? players[room.impostorId].name : '?';
+    trueImpostorEl.textContent = `El verdadero impostor era: ${trueImpostorName} 🥷`;
   }
 
   document.getElementById('result-word').textContent = room.word;
@@ -668,9 +683,10 @@ document.getElementById('btn-restart').onclick = async () => {
   const impostorId = ids[Math.floor(Math.random()*ids.length)];
   const turnOrder = shuffle([...ids]);
 
-  lastMsgCount = 0;
+  // SOLUCIÓN CHAT: Forzamos el reinicio del contador local antes de vaciar la DB
+  lastMsgCount = -1;
 
-  // Eliminamos el nodo de mensajes por completo para limpiar el chat
+  // Eliminamos el nodo entero en la base de datos
   await roomRef.child('messages').remove();
 
   await roomRef.update({
